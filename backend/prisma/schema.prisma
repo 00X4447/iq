@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id           Int            @id @default(autoincrement())
+  user_id      String         @unique @default(uuid())
+  email        String         @unique
+  password     String
+  role         Role           @default(student)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  profiles     Profiles?
+  classrooms   Classrooms[]
+  responses    Responses[]
+  grades       Grades[]
+  activityLogs ActivityLogs[]
+}
+
+model Profiles {
+  id           Int      @id @default(autoincrement())
+  user_id      String   @unique
+  user_name    String
+  user_profile String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         Users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+}
+
+model Classrooms {
+  id             Int       @id @default(autoincrement())
+  classroom_code String    @unique
+  teacher_id     Int
+  name           String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  teacher        Users     @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  blocks         Blocks[]
+  quizzes        Quizzes[]
+}
+
+model Blocks {
+  id           Int        @id @default(autoincrement())
+  classroom_id Int
+  block_name   String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  classroom    Classrooms @relation(fields: [classroom_id], references: [id], onDelete: Cascade)
+  quizzes      Quizzes[]
+}
+
+model Quizzes {
+  id             Int            @id @default(autoincrement())
+  classroom_code String
+  block_id       Int?
+  title          String
+  description    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  classroom      Classrooms     @relation(fields: [classroom_code], references: [classroom_code], onDelete: Cascade)
+  block          Blocks?        @relation(fields: [block_id], references: [id], onDelete: Cascade)
+  questions      Questions[]
+  responses      Responses[]
+  grades         Grades[]
+  activityLogs   ActivityLogs[]
+}
+
+model Questions {
+  id            Int          @id @default(autoincrement())
+  quiz_id       Int
+  question_text String
+  type          QuestionType
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  quiz          Quizzes      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  options       Options[]
+  responses     Responses[]
+}
+
+model Options {
+  id          Int       @id @default(autoincrement())
+  question_id Int
+  option_text String
+  is_correct  Boolean   @default(false)
+  question    Questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+}
+
+model Responses {
+  id          Int       @id @default(autoincrement())
+  student_id  Int
+  quiz_id     Int
+  question_id Int
+  response    String
+  submittedAt DateTime  @default(now())
+  student     Users     @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  quiz        Quizzes   @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  question    Questions @relation(fields: [question_id], references: [id], onDelete: Cascade)
+}
+
+model Grades {
+  id         Int     @id @default(autoincrement())
+  student_id Int
+  quiz_id    Int
+  score      Int
+  feedback   String?
+  student    Users   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  quiz       Quizzes @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+}
+
+model ActivityLogs {
+  id        Int      @id @default(autoincrement())
+  user_id   Int
+  quiz_id   Int?
+  action    Action
+  timestamp DateTime @default(now())
+  user      Users    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  quiz      Quizzes? @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  teacher
+  student
+}
+
+enum QuestionType {
+  MCQ
+  short_answer
+}
+
+enum Action {
+  start
+  submit
+}
