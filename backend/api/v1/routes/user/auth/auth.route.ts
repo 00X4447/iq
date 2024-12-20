@@ -1,14 +1,66 @@
-import express, { NextFunction, Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { UserInterface } from "../interfaces/interface.user";
+import passport from "passport";
+import "../../strategies/google";
 
 dotenv.config();
 
 const userAuthRouter = express.Router();
 const prisma = new PrismaClient();
+
+interface GoogleAuthInterface extends Response {
+  user: {
+    success: boolean;
+    user: {
+      user_id: string;
+      email: string;
+      role: string;
+    };
+  };
+}
+
+userAuthRouter.get(
+  "/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+userAuthRouter.get(
+  "/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  (request: GoogleAuthInterface, response: any) => {
+    if (request.user) {
+      console.log("OK");
+
+      const token = jwt.sign(
+        {
+          user_id: request.user.user.user_id,
+          email: request.user.user.email,
+          role: request.user.user.role,
+        },
+        process.env.JWT_SECRET as string,
+        { expiresIn: "30d" }
+      );
+
+      // Token generated
+      if (token) {
+        return response.status(200).json({
+          success: true,
+          message: "User logged in successfully",
+          token: token,
+        });
+      } else {
+        return response.status(500).json({
+          success: false,
+          message: "Internal server error",
+        });
+      }
+    }
+  }
+);
 
 // Register
 userAuthRouter.post(
